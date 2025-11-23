@@ -1,0 +1,5 @@
+transport_id,type,capacity_tons,cost_per_km,max_hours_per_week,fixed_weekly_cost
+TRP_001,Small,10,1.15,40,1000.00
+TRP_002,Small,12,1.15,40,1050.00
+TRP_003,Large,20,1.25,40,1500.00
+TRP_004,Large,25,1.25,40,1600.00

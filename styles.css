@@ -1,0 +1,47 @@
+/* Archivo: styles.css */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 30px;
+}
+
+.kpi {
+    text-align: center;
+    padding: 15px;
+    background: #2c3e50; /* Color oscuro elegante */
+    color: white;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Centrado para que quede mejor */
+    gap: 20px; /* Espacio entre gráficas */
+}
+
+.chart-box {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    width: 45%; /* Ocupa casi la mitad de la pantalla */
+    min-width: 300px; /* Para que no se haga muy pequeño en móviles */
+    margin-bottom: 20px;
+}
+
+/* Forzamos el tamaño del canvas para que no se desajuste */
+canvas {
+    width: 100% !important;
+    height: 300px !important;
+}

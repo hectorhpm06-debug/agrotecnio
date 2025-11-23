@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Logística UdL</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="datos.js"></script> 
+
+    <style>
+        :root { 
+            --sidebar-bg: #1e293b;
+            --sidebar-text: #e2e8f0;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-main);
+            margin: 0; padding: 0; color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        /* --- LAYOUT --- */
+        .app-container { display: flex; width: 100%; height: 100%; }
+
+        /* --- BARRA LATERAL --- */
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            padding: 1.5rem;
+            display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 2.5rem; }
+        .brand i { font-size: 1.8rem; color: var(--primary); }
+        .brand h1 { margin: 0; font-size: 1.4rem; font-weight: 700; color: white; }
+
+        .sidebar-section-title {
+            text-transform: uppercase; font-size: 0.75rem; font-weight: 700;
+            letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 1rem;
+        }
+        .metric-tile {
+            background: rgba(255,255,255,0.05); padding: 1rem;
+            border-radius: var(--radius-md); margin-bottom: 0.8rem;
+            border-left: 4px solid transparent;
+        }
+        .metric-tile label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px; }
+        .metric-tile .value { display: block; font-size: 1.2rem; font-weight: 700; color: white; }
+
+        /* --- CONTENIDO PRINCIPAL --- */
+        .main-content { flex-grow: 1; overflow-y: auto; padding: 2rem; }
+
+        /* KPIs Superiores */
+        .top-kpis-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem; margin-bottom: 2rem;
+        }
+        .kpi-card-modern {
+            background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card); display: flex; flex-direction: column;
+            border: 1px solid #f1f5f9;
+        }
+        .kpi-card-modern .icon-wrapper { margin-bottom: 1rem; color: var(--text-muted); }
+        .kpi-card-modern .kpi-value { font-size: 2.2rem; font-weight: 800; line-height: 1; margin-bottom: 0.5rem; color: var(--text-main); }
+        .kpi-card-modern label { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
+        .text-green { color: var(--success) !important; } .text-red { color: var(--danger) !important; } .text-blue { color: var(--primary) !important; }
+
+        /* Timeline Controls */
+        .timeline-controls {
+            background: var(--bg-card); padding: 1rem 2rem; border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card); display: flex; align-items: center; gap: 2rem;
+            margin-bottom: 2rem; border: 1px solid #f1f5f9;
+        }
+        .btn-primary-action {
+            background-color: var(--text-main); color: white; border: none;
+            padding: 0.8rem 1.5rem; border-radius: 10px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; transition: all 0.2s;
+        }
+        .btn-primary-action:hover { background-color: var(--primary); }
+        .slider-wrapper { flex-grow: 1; }
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        .day-display-large { font-size: 2rem; font-weight: 800; color: var(--primary); min-width: 100px; text-align: right; }
+
+        /* Mapa Container */
+        .map-section-container {
+            background: var(--bg-card); border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card); overflow: hidden; margin-bottom: 2rem;
+            border: 1px solid #f1f5f9;
+        }
+        .section-header {
+            padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #f1f5f9;
+            font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 10px;
+        }
+        
+        /* EL MAPA */
+        #map { height: 500px; width: 100%; background: #ddd; }
+
+        /* Lista Rutas */
+        #rutas-list-container { padding: 1.5rem; border-top: 1px solid #f1f5f9; background: #fcfdfd; }
+        .routes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        .route-card-modern {
+            background: white; border: 1px solid #e2e8f0; padding: 1rem;
+            border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .route-badge-modern { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: white; }
+
+        /* Charts */
+        .charts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .chart-card {
+            background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card); border: 1px solid #f1f5f9;
+        }
+        .chart-container-wrapper { position: relative; height: 250px; margin-top: 1rem; }
+        
+        /* Utilidades Popups */
+        .popup-table { width: 100%; font-size: 0.9rem; border-collapse: collapse; }
+        .popup-table td { padding: 3px 0; border-bottom: 1px solid #eee; }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-truck-fast"></i>
+                <h1>Logística UdL</h1>
+            </div>
+            <div class="sidebar-section-title">Balance Diario (Día <span id="dayNumSidebar">1</span>)</div>
+            <div class="metric-tile" style="border-color: var(--success);">
+                <label>Ingresos Hoy</label>
+                <span class="value text-green" id="day-ingresos">0 €</span>
+            </div>
+            <div class="metric-tile" style="border-color: var(--danger);">
+                <label>Gastos Hoy</label>
+                <span class="value text-red" id="day-costes">0 €</span>
+            </div>
+            <div class="metric-tile" style="border-color: var(--primary);">
+                <label>Beneficio Neto</label>
+                <span class="value text-blue" id="day-beneficio">0 €</span>
+            </div>
+            <div class="metric-tile" style="border-color: var(--warning);">
+                <label>Ocupación Planta</label>
+                <span class="value" id="day-ocupacion">0%</span>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-kpis-grid">
+                <div class="kpi-card-modern">
+                    <div class="icon-wrapper"><i class="fa-solid fa-wallet fa-lg"></i></div>
+                    <div class="kpi-value text-blue" id="kpi-beneficio">-- €</div>
+                    <label>Beneficio Total <span id="kpi-margen" style="font-weight:normal; color:var(--success); margin-left:5px">(Margen: --%)</span></label>
+                </div>
+                <div class="kpi-card-modern">
+                    <div class="icon-wrapper"><i class="fa-solid fa-coins fa-lg"></i></div>
+                    <div class="kpi-value text-red" id="kpi-costes">-- €</div>
+                    <label>Costes Operativos Totales</label>
+                </div>
+                <div class="kpi-card-modern">
+                    <div class="icon-wrapper"><i class="fa-solid fa-box fa-lg"></i></div>
+                    <div class="kpi-value" id="kpi-cerdos">--</div>
+                    <label>Volumen Entregado</label>
+                </div>
+                <div class="kpi-card-modern">
+                    <div class="icon-wrapper"><i class="fa-solid fa-scale-unbalanced fa-lg"></i></div>
+                    <div class="kpi-value text-danger" id="kpi-penalizacion">-- €</div>
+                    <label>Penalizaciones por Calidad</label>
+                </div>
+            </div>
+
+            <div class="timeline-controls">
+                <button id="playBtn" class="btn-primary-action"><i class="fa-solid fa-play"></i> Simular</button>
+                <div class="slider-wrapper">
+                    <input type="range" id="daySlider" min="1" max="10" value="1">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
+                        <span>Inicio Campaña</span><span>Fin Campaña</span>
+                    </div>
+                </div>
+                <div class="day-display-large" id="dayDisplay">Día 1</div>
+            </div>
+
+            <div class="map-section-container">
+                <div class="section-header"><i class="fa-regular fa-map"></i> Mapa de Rutas</div>
+                <div id="map"></div>
+                
+                <div id="rutas-list-container">
+                    <div class="sidebar-section-title" style="color: var(--text-main);">Detalle de Rutas Activas</div>
+                    <div id="rutas-list" class="routes-grid"></div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                 <div class="chart-card">
+                    <div class="section-header" style="padding-left:0; border:none;"><i class="fa-solid fa-chart-column"></i> Rentabilidad por Origen</div>
+                    <div class="chart-container-wrapper"><canvas id="farmProfitChart"></canvas></div>
+                </div>
+                 <div class="chart-card">
+                    <div class="section-header" style="padding-left:0; border:none;"><i class="fa-solid fa-chart-line"></i> Evolución Financiera</div>
+                    <div class="chart-container-wrapper"><canvas id="financeChart"></canvas></div>
+                </div>
+                 <div class="chart-card">
+                    <div class="section-header" style="padding-left:0; border:none;"><i class="fa-solid fa-chart-pie"></i> Eficiencia de Flota</div>
+                    <div class="chart-container-wrapper" style="width: 80%; margin: 0 auto;"><canvas id="fleetChart"></canvas></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+    const MATADERO_COORDS = [41.63, 0.52];
+    const map = L.map('map').setView(MATADERO_COORDS, 9);
+    
+    // TILE LAYER
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+        attribution: '© OpenStreetMap' 
+    }).addTo(map);
+    
+    let layerGroup = L.layerGroup().addTo(map);
+
+    const formatMoney = (val) => val.toLocaleString('es-ES', {style: 'currency', currency: 'EUR', maximumFractionDigits: 0});
+
+    function calculateAdvancedKPIs() {
+        let totalIngresos = 0, totalCostes = 0, totalCerdos = 0;
+        let ingresosTeoricosMax = 0;
+        let farmStats = {}; 
+        let totalOcupacionCamion = 0, numRutas = 0;
+
+        datos_simulacion.forEach(dia => {
+            totalIngresos += dia.ingresos;
+            totalCostes += (dia.cTrans + dia.cComida);
+            totalCerdos += dia.cerdos;
+
+            dia.rutas.forEach(ruta => {
+                let cargaReal = 0;
+                ruta.paradas.forEach(p => {
+                    cargaReal += (p.recogidos * p.peso_medio);
+                    if (!farmStats[p.id]) farmStats[p.id] = { ingresos: 0, cerdos: 0 };
+                    farmStats[p.id].cerdos += p.recogidos;
+                    
+                    let valorTeorico = p.recogidos * p.peso_medio * 1.56; 
+                    ingresosTeoricosMax += valorTeorico;
+                    
+                    let penalizacion = 1.0;
+                    if(p.peso_medio > 120 || p.peso_medio < 100) penalizacion = 0.8; 
+                    else if(p.peso_medio > 115 || p.peso_medio < 105) penalizacion = 0.85; 
+                    
+                    let ingresoParada = p.recogidos * p.peso_medio * 1.56 * penalizacion;
+                    farmStats[p.id].ingresos += ingresoParada;
+                });
+                
+                let cap = ruta.capacidad_total > 0 ? ruta.capacidad_total : 20000;
+                let ocup = (cargaReal / cap) * 100;
+                totalOcupacionCamion += ocup;
+                numRutas++;
+            });
+        });
+
+        let beneficio = totalIngresos - totalCostes;
+        let margen = (beneficio / totalIngresos) * 100;
+        let penalizacionTotal = ingresosTeoricosMax - totalIngresos;
+        if (penalizacionTotal < 0) penalizacionTotal = 0;
+
+        let ocupacionMediaFlota = numRutas > 0 ? (totalOcupacionCamion / numRutas) : 0;
+
+        document.getElementById('kpi-beneficio').innerText = formatMoney(beneficio);
+        document.getElementById('kpi-margen').innerHTML = `(Margen: ${margen.toFixed(1)}%)`;
+        document.getElementById('kpi-cerdos').innerText = totalCerdos.toLocaleString();
+        document.getElementById('kpi-costes').innerText = formatMoney(totalCostes);
+        document.getElementById('kpi-penalizacion').innerText = "-" + formatMoney(penalizacionTotal);
+
+        return { farmStats, ocupacionMediaFlota };
+    }
+
+    // ACTUALIZACIÓN DIARIA 
+    function updateDashboard(dia) {
+        const dataDia = datos_simulacion[dia - 1];
+        if (!dataDia) return;
+
+        document.getElementById('dayDisplay').innerText = `Día ${dataDia.dia}`;
+        document.getElementById('dayNumSidebar').innerText = dataDia.dia;
+        document.getElementById('day-ingresos').innerText = formatMoney(dataDia.ingresos);
+        document.getElementById('day-costes').innerText = formatMoney(dataDia.cTrans + dataDia.cComida);
+        document.getElementById('day-beneficio').innerText = formatMoney(dataDia.ingresos - (dataDia.cTrans + dataDia.cComida));
+        document.getElementById('day-ocupacion').innerText = dataDia.capacidadMataderoPwd.toFixed(1) + "%";
+
+        layerGroup.clearLayers();
+        
+        // 1. ESCORXADOR (Pin normal)
+        const colorMat = dataDia.capacidadMataderoPwd > 90 ? 'red' : 'black';
+        L.marker(MATADERO_COORDS, {
+             icon: L.icon({ 
+                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorMat}.png`, 
+                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', 
+                 iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] 
+             })
+        }).addTo(layerGroup).bindPopup(`<b>🏭 Planta Central</b><br>Ocupación: ${dataDia.capacidadMataderoPwd.toFixed(1)}%`);
+
+        // 2. GRANJAS (PINS DE COLORES o CIRCULOS GRISES SI INACTIVAS)
+        let visitasHoy = {};
+        dataDia.rutas.forEach(r => r.paradas.forEach(p => {
+            if(!visitasHoy[p.id]) visitasHoy[p.id] = {total:0, camiones:[]};
+            visitasHoy[p.id].total += p.recogidos;
+            visitasHoy[p.id].camiones.push({id: r.camion_id, n: p.recogidos});
+        }));
+
+        if (typeof granjas_todas !== 'undefined') {
+            granjas_todas.forEach(g => {
+                const info = visitasHoy[g.id];
+                if(info) {
+                    let color = info.total > 150 ? 'red' : (info.total > 50 ? 'gold' : 'green');
+                    let popupHTML = `<b>${g.nombre}</b><hr><table class="popup-table">`;
+                    info.camiones.forEach(c => popupHTML += `<tr><td>🚚 ${c.id}</td><td align="right">${c.n}</td></tr>`);
+                    popupHTML += `<tr style="font-weight:bold;border-top:1px solid #ccc"><td>TOTAL</td><td align="right">${info.total}</td></tr></table>`;
+
+                    L.marker([g.lat, g.lon], {
+                        icon: L.icon({ 
+                            iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`, 
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', 
+                            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] 
+                        })
+                    }).addTo(layerGroup).bindPopup(popupHTML);
+                } else {
+                    // Granja inactiva: Círculo gris pequeño (como en el original)
+                    L.circleMarker([g.lat, g.lon], {radius: 5, color: '#95a5a6', fillOpacity: 0.5}).addTo(layerGroup).bindPopup(`<b>${g.nombre}</b><br>Sin actividad hoy`);
+                }
+            });
+        }
+
+        // 3. RUTAS (Líneas de colores)
+        let rutasHTML = "";
+        dataDia.rutas.forEach((ruta, idx) => {
+            const offset = 0.0006 * (idx % 2 === 0 ? 1 : -1) * Math.ceil((idx + 1) / 2);
+            let latlngs = [[MATADERO_COORDS[0]+offset, MATADERO_COORDS[1]+offset]];
+            ruta.paradas.forEach(p => latlngs.push([p.lat+offset, p.lon+offset]));
+            latlngs.push([MATADERO_COORDS[0]+offset, MATADERO_COORDS[1]+offset]);
+
+            let carga = 0;
+            if(ruta.paradas) ruta.paradas.forEach(p => carga += (p.recogidos * p.peso_medio));
+            else carga = ruta.carga_actual;
+            let ocup = (ruta.capacidad_total > 0) ? (carga/ruta.capacidad_total)*100 : 0;
+
+            const colores = ['#2980b9', '#8e44ad', '#e67e22', '#c0392b']; 
+            const color = colores[idx % 4];
+
+            L.polyline(latlngs, {color: color, weight: 4, opacity: 0.8}).addTo(layerGroup);
+            
+            let badgeColor = ocup > 90 ? 'background:#ef4444' : (ocup > 50 ? 'background:#f59e0b' : 'background:#10b981');
+            rutasHTML += `
+            <div class="route-card-modern" style="border-left: 4px solid ${color};">
+                <div>
+                    <strong style="color:var(--text-main)">${ruta.camion_id}</strong>
+                    <div style="color:var(--text-muted); font-size:0.85rem">${ruta.paradas.length} paradas</div>
+                </div>
+                <div class="route-badge-modern" style="${badgeColor}">${ocup.toFixed(0)}% Cap.</div>
+            </div>`;
+        });
+        document.getElementById('rutas-list').innerHTML = rutasHTML || "<div style='grid-column:1/-1; text-align:center; color:#999; padding:20px;'>Sin actividad logística.</div>";
+    }
+
+    // GRÁFICOS (Estilo Inter)
+    function initCharts(globalStats) {
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#64748b';
+
+        const farmIds = Object.keys(globalStats.farmStats);
+        farmIds.sort((a,b) => globalStats.farmStats[b].ingresos - globalStats.farmStats[a].ingresos);
+        const topFarms = farmIds.slice(0, 10); 
+
+        new Chart(document.getElementById('farmProfitChart'), {
+            type: 'bar',
+            data: {
+                labels: topFarms,
+                datasets: [{
+                    label: 'Ingresos (€)',
+                    data: topFarms.map(id => globalStats.farmStats[id].ingresos),
+                    backgroundColor: '#0ea5e9',
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                indexAxis: 'y', 
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: {display: false} },
+                scales: { x: { grid: {display: false} }, y: { grid: {display: false} } }
+            }
+        });
+
+        new Chart(document.getElementById('financeChart'), {
+            type: 'bar',
+            data: {
+                labels: datos_simulacion.map(d => `D${d.dia}`),
+                datasets: [
+                    { label: 'Beneficio', data: datos_simulacion.map(d => d.ingresos - (d.cTrans+d.cComida)), type: 'line', borderColor: '#0f172a', borderWidth: 3, pointBackgroundColor: '#fff', tension: 0.3 },
+                    { label: 'Ingresos', data: datos_simulacion.map(d => d.ingresos), backgroundColor: '#10b981', borderRadius: 4 },
+                    { label: 'Costes', data: datos_simulacion.map(d => d.cTrans + d.cComida), backgroundColor: '#ef4444', borderRadius: 4 }
+                ]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: {position: 'bottom'} },
+                scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] } }, x: { grid: {display: false} } }
+            }
+        });
+
+        new Chart(document.getElementById('fleetChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Ocupada', 'Vacía'],
+                datasets: [{
+                    data: [globalStats.ocupacionMediaFlota, 100 - globalStats.ocupacionMediaFlota],
+                    backgroundColor: ['#10b981', '#f1f5f9'], borderWidth: 0, hoverOffset: 4
+                }]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: globalStats.ocupacionMediaFlota.toFixed(1) + '%', font: {size: 24, weight: '700'}, color: '#10b981', position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    const slider = document.getElementById('daySlider');
+    const playBtn = document.getElementById('playBtn');
+    let isPlaying = false, interval;
+    
+    slider.addEventListener('input', (e) => updateDashboard(parseInt(e.target.value)));
+    playBtn.addEventListener('click', () => {
+        if(isPlaying) { 
+            clearInterval(interval); 
+            playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Simular'; 
+            playBtn.style.backgroundColor = 'var(--text-main)';
+        } else { 
+            interval=setInterval(() => { 
+                let v=parseInt(slider.value)+1; if(v>10) v=1; slider.value=v; updateDashboard(v); 
+            }, 1000); 
+            playBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pausa';
+            playBtn.style.backgroundColor = '#ef4444';
+        }
+        isPlaying=!isPlaying;
+    });
+
+    const stats = calculateAdvancedKPIs();
+    initCharts(stats);
+    updateDashboard(1);
+
+</script>
+</body>
+</html>
